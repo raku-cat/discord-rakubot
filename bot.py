@@ -8,7 +8,6 @@ import asyncio
 import requests
 import json
 
-#logger = logging.basicConfig(level=logging.DEBUG)
 with open(sys.path[0] + '/keys.json', 'r') as f:
     key = json.load(f)
 client = discord.Client()
@@ -21,15 +20,18 @@ async def on_ready():
 @client.event
 async def on_message(message):
     if message.content.startswith('.price'):
+        try:
+            itemq = str(message.content.split(' ', 1)[1])
+        except IndexError:
+            return
         await client.send_typing(message.channel)
-        itemq = str(message.content.split(' ', 1)[1])
         if itemq == 'update':
             r = requests.get('http://backpack.tf/api/IGetPrices/v4?key=' + key['backpacktf'])
             if r.json()['response']['success'] != 1:
-                await client.send_message(message.channel, str(r.json()['response']['message'].rsplit('.')[0]))
+                await client.send_message(message.channel, str(r.json()['response']['message'].rsplit('.', 2)[0]) + '.')
             else:
                 with open (sys.path[0] + '/bplist.json', 'w') as f:
-                    await json.dump(r, f)
+                    json.dump(r.json(), f)
                     await client.send_message(message.channel, 'Item price list updated')
         else:
             with open(sys.path[0] + '/bplist.json', 'r') as f:
@@ -37,7 +39,7 @@ async def on_message(message):
             try:
                 ipr = str(bpjs['response']['items'][itemq]['prices']['6']['Tradable']['Craftable'][0]['value'])
                 cur = str(bpjs['response']['items'][itemq]['prices']['6']['Tradable']['Craftable'][0]['currency'])
-                await client.send_message(message.channel, itemq + ' is currently priced at ' + ipr + ' ' + cur)
+                await client.send_message(message.channel, itemq + ' is currently priced at ' + ipr + ' ' + cur + '.')
             except KeyError:
                 await client.send_message(message.channel, 'Item not found')
     else:
