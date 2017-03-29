@@ -1,33 +1,46 @@
 #!/usr/bin/env python3
 import discord
-#import logging
+import os.path
 import sys
 import time
 import datetime
 import asyncio
 import requests
+import json
 
 #logger = logging.basicConfig(level=logging.DEBUG)
-with open(sys.path[0] + '/token.txt', 'r') as f:
-    token=f.read().strip('\n')
+with open(sys.path[0] + '/keys.json', 'r') as f:
+    key = json.load(f)
 client = discord.Client()
 print('Started...')
-r = requests.get("http://backpack.tf/api/IGetPrices/v4?key=58dbd990c440456a5523ffdb")
+
 @client.event
 async def on_ready():
     print('Sucessfully logged in as ' + client.user.id)
-#    print(value(discord.Permissions.send_messages))
 
 @client.event
 async def on_message(message):
-#    print('Message received')
-#    print(message.content)
-#    print(message.channel.id)
     if message.content.startswith('.price'):
-        #r = requests.get("http://backpack.tf/api/IGetPrices/v4?key=58dbd990c440456a5523ffdb")
-        print(r.json()['response'],['message'])
-        await client.send_message(message.channel, r.json())
+        await client.send_typing(message.channel)
+        itemq = str(message.content.split(' ', 1)[1])
+        if itemq == 'update':
+            r = requests.get('http://backpack.tf/api/IGetPrices/v4?key=' + key['backpacktf'])
+            if r.json()['response']['success'] != 1:
+                await client.send_message(message.channel, str(r.json()['response']['message'].rsplit('.')[0]))
+            else:
+                with open (sys.path[0] + '/bplist.json', 'w') as f:
+                    await json.dump(r, f)
+                    await client.send_message(message.channel, 'Item price list updated')
+        else:
+            with open(sys.path[0] + '/bplist.json', 'r') as f:
+                bpjs = json.load(f)
+            try:
+                ipr = str(bpjs['response']['items'][itemq]['prices']['6']['Tradable']['Craftable'][0]['value'])
+                cur = str(bpjs['response']['items'][itemq]['prices']['6']['Tradable']['Craftable'][0]['currency'])
+                await client.send_message(message.channel, itemq + ' is currently priced at ' + ipr + ' ' + cur)
+            except KeyError:
+                await client.send_message(message.channel, 'Item not found')
     else:
         pass
 
-client.run(token)
+client.run(key['discord'])
