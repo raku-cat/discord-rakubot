@@ -4,8 +4,10 @@ import os.path
 import sys
 import asyncio
 import aiohttp
+import aiofiles
 import json
 import string
+import requests
 
 with open(sys.path[0] + '/keys.json', 'r') as f:
     key = json.load(f)
@@ -24,26 +26,36 @@ async def on_message(message):
         except IndexError:
             return
         await client.send_typing(message.channel)
-        quality = ['Vintage', 'Genuine', 'Strange', 'Unusual', 'Haunted', 'Collector\'s']
-        if any(qual in itemq for qual in quality):
-            qual = str([item for item in quality if item in itemq][0])
-            params = "&quality=" + qual + "&item=" + str(itemq.split(' ')[1])
-        else:
-            params = "&item=" + itemq + "&quality=6"
-        async with aiohttp.get('http://backpack.tf/api/IGetPriceHistory/v1?key=' + key['backpacktf'] + params) as r:
-            if r.status == 200:
-                js = await r.json()
-                try:
-                    if js['response']['success'] == 1:
-                        itemob = js['response']['history'][-1]
-                        ipr = str(itemob['value'])
-                        cur = str(itemob['currency'])
-                        await client.send_message(message.channel, itemq + ' is currently priced at ' + ipr + ' ' + cur + '.')
-                    else:
-                        await client.send_message(message.channel, "Something went wrong")
-                except json.decoder.JSONDecodeError:
-                    await client.send_message(message.channel, 'Item not found')
+        await client.send_message(message.channel, await parse_query(itemq))
     else:
-        pass
+        return
+
+async def parse_query(itemq):
+    quality = ['Vintage', 'Genuine', 'Strange', 'Unusual', 'Haunted', 'Collector\'s']
+    async with aiofiles.open(sys.path[0] + '/unuschem.json', mode='r') as unusch:
+        unu = json.loads(await unusch.read())
+        unuef = [ row['name'] for row in unu ]
+    if any(qual in itemq for qual in quality):
+        qual = str([item for item in quality if item in itemq][0])
+        params = "&quality=" + qual + "&item=" + str(itemq.split(' ')[1])
+    elif any(effect in itemq for effect in unuef):
+        effectn = str([item for item in unuef if item in itemq][0])
+        effectid = str([item for item in unu if item['name'] == effectn][0]['id'])
+        params = "&item=" + itemq.replace(effectn, '').lstrip() + "&quality=5" + "&priceindex=" + effectid
+    else:
+        params = "&item=" + itemq + "&quality=6"
+    r = requests.get('http://backpack.tf/api/IGetPriceHistory/v1?key=' + key['backpacktf'] + params)
+    if r.status_code == 200:
+        try:
+            js = r.json()
+            if js['response']['success'] == 1:
+                itemob = js['response']['history'][-1]
+                ipr = str(itemob['value'])
+                cur = str(itemob['currency'])
+                return itemq + ' is currently priced at ' + ipr + ' ' + cur + '.'
+            else:
+                return 'Something went wrong.'
+        except json.decoder.JSONDecodeError:
+            return 'Item not found.'
 
 client.run(key['discord'])
