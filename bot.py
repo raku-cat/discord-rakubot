@@ -3,7 +3,7 @@ import discord
 import os.path
 import sys
 import asyncio
-import requests
+import aiohttp
 import json
 import string
 
@@ -14,7 +14,7 @@ print('Started...')
 
 @client.event
 async def on_ready():
-    print('Sucessfully logged in as ' + client.user.id)
+    print('Sucessfully logged in as ' + client.user.name + '(' + client.user.id + ')')
 
 @client.event
 async def on_message(message):
@@ -30,17 +30,19 @@ async def on_message(message):
             params = "&quality=" + qual + "&item=" + str(itemq.split(' ')[1])
         else:
             params = "&item=" + itemq + "&quality=6"
-        r = requests.get('http://backpack.tf/api/IGetPriceHistory/v1?key=' + key['backpacktf'] + params)
-        try:
-            if r.json()['response']['success'] == 1:
-                itemob = r.json()['response']['history'][-1]
-                ipr = str(itemob['value'])
-                cur = str(itemob['currency'])
-                await client.send_message(message.channel, itemq + ' is currently priced at ' + ipr + ' ' + cur + '.')
-            else:
-                await client.send_message(message.channel, "Something went wrong")
-        except json.decoder.JSONDecodeError:
-            await client.send_message(message.channel, 'Item not found')
+        async with aiohttp.get('http://backpack.tf/api/IGetPriceHistory/v1?key=' + key['backpacktf'] + params) as r:
+            if r.status == 200:
+                js = await r.json()
+                try:
+                    if js['response']['success'] == 1:
+                        itemob = js['response']['history'][-1]
+                        ipr = str(itemob['value'])
+                        cur = str(itemob['currency'])
+                        await client.send_message(message.channel, itemq + ' is currently priced at ' + ipr + ' ' + cur + '.')
+                    else:
+                        await client.send_message(message.channel, "Something went wrong")
+                except json.decoder.JSONDecodeError:
+                    await client.send_message(message.channel, 'Item not found')
     else:
         pass
 
