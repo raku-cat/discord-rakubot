@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import discord
 import os.path
+from titlecase import titlecase
 import sys
 import asyncio
 import aiohttp
@@ -22,7 +23,7 @@ async def on_ready():
 async def on_message(message):
     if message.content.lower().startswith('.price'):
         try:
-            itemq = string.capwords(str(message.content.split(' ', 1)[1]))
+            itemq = titlecase(str(message.content.split(' ', 1)[1]))
         except IndexError:
             return
         await client.send_typing(message.channel)
