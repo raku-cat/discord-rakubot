@@ -2,11 +2,10 @@
 import discord
 import os.path
 import sys
-import time
-import datetime
 import asyncio
 import requests
 import json
+import string
 
 with open(sys.path[0] + '/keys.json', 'r') as f:
     key = json.load(f)
@@ -21,33 +20,27 @@ async def on_ready():
 async def on_message(message):
     if message.content.startswith('.price'):
         try:
-            itemq = str(message.content.split(' ', 1)[1])
+            itemq = string.capwords(str(message.content.split(' ', 1)[1]))
         except IndexError:
             return
         await client.send_typing(message.channel)
-        if itemq == 'update':
-            r = requests.get('http://backpack.tf/api/IGetPrices/v4?key=' + key['backpacktf'])
-            if r.json()['response']['success'] != 1:
-                await client.send_message(message.channel, str(r.json()['response']['message'].rsplit('.', 2)[0]) + '.')
-            else:
-                with open (sys.path[0] + '/bplist.json', 'w') as f:
-                    json.dump(r.json(), f, indent=4)
-                    await client.send_message(message.channel, 'Item price list updated')
+        quality = ['Vintage', 'Genuine', 'Strange', 'Unusual', 'Haunted', 'Collector\'s']
+        if any(qual in itemq for qual in quality):
+            qual = str([item for item in quality if item in itemq][0])
+            params = "&quality=" + qual + "&item=" + str(itemq.split(' ')[1])
         else:
-            with open(sys.path[0] + '/bplist.json', 'r') as f:
-                bpjs = json.load(f)
-            try:
-                itemobj = bpjs['response']['items'][itemq]['prices']['6']['Tradable']
-                ipr = str(itemobj['Craftable'][0]['value'])
-                cur = str(itemobj['Craftable'][0]['currency'])
-            except KeyError:
-                try:
-                    ipr = str(itemobj['Non-Craftable'][0]['value'])
-                    cur = str(itemobj['Non-Craftable'][0]['currency'])
-                except (KeyError, UnboundLocalError):
-                    await client.send_message(message.channel, 'Item not found')
-                    return
-            await client.send_message(message.channel, itemq + ' is currently priced at ' + ipr + ' ' + cur + '.')
+            params = "&item=" + itemq + "&quality=6"
+        r = requests.get('http://backpack.tf/api/IGetPriceHistory/v1?key=' + key['backpacktf'] + params)
+        try:
+            if r.json()['response']['success'] == 1:
+                itemob = r.json()['response']['history'][-1]
+                ipr = str(itemob['value'])
+                cur = str(itemob['currency'])
+                await client.send_message(message.channel, itemq + ' is currently priced at ' + ipr + ' ' + cur + '.')
+            else:
+                await client.send_message(message.channel, "Something went wrong")
+        except json.decoder.JSONDecodeError:
+            await client.send_message(message.channel, 'Item not found')
     else:
         pass
 
