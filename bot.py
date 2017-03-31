@@ -17,20 +17,21 @@ async def on_ready():
 
 @client.event
 async def on_message(message):
+    chid = discord.Object(message.channel.id)
     inmsg = message.content.lower()
     if inmsg.startswith('.price'):
         try:
             itemq = titlecase(str(message.content.split(' ', 1)[1]))
         except IndexError:
             return
-        client.send_typing(message.channel)
+        await client.send_typing(chid)
         if any(x in ' '+inmsg+' ' for x in [' .price ', ' .price@bptf ']):
             pricemsg = await parse_bptf_query(itemq)
         elif inmsg.startswith('.price@scm'):
             pricemsg = await parse_scm_query(itemq)
         else:
             return
-        await client.send_message(message.channel, pricemsg)
+        await client.send_message(chid, pricemsg)
     else:
         return
 async def parse_scm_query(itemq):
