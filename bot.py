@@ -36,7 +36,7 @@ async def on_message(message):
 async def parse_scm_query(itemq):
     prams = { 'currency' : 1, 'appid' : 440, 'market_hash_name': itemq }
     r = requests.get('https://steamcommunity.com/market/priceoverview/', params=prams)
-    if r.status_code == 200:
+    if r.status_code == 200 or 500:
         js = r.json()
         if str(js['success']) == 'True':
             try:
