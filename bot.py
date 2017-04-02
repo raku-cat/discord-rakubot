@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 import discord
 from titlecase import titlecase
+import random
 import sys
-import asyncio, aiofiles
+import asyncio
+import aiofiles
 import json
 import requests
 
@@ -14,9 +16,15 @@ print('Started...')
 @client.event
 async def on_ready():
     print('Sucessfully logged in as ' + client.user.name + '(' + client.user.id + ')')
+    await client.change_presence(game=discord.Game(name='Super Mario Bros 2'))
 
 @client.event
 async def on_message(message):
+#    autor = message.author
+#    getms = client.logs_from(message.channel)
+#    print(discord.utils.get(message.server.members, name='Overlord of Tennis Balls'))
+#    async for message in client.logs_from(message.channel):
+#        print(message.author)
     chid = discord.Object(message.channel.id)
     inmsg = message.content.lower()
     if inmsg.startswith('.price'):
@@ -33,7 +41,21 @@ async def on_message(message):
             return
         await client.send_message(chid, pricemsg)
     else:
+        pass
+    if str(message.server) == '/furry/ Memechat' or 'bots':
+        if inmsg.startswith('.reactmeme'):
+#           try:
+#                msg = str(inmsg.split(' ')[1])
+#                print(msg)
+#            except IndexError:
+            mems = [ ['\U0001F1F3', '\U0001F1EE', '\U0001F1E7', '\U0001F171', '\U0001F1E6'], ['\U0001F914', '\U0001F171', '\U0001F1F4', '\U0001F1FE' ], ['\U0001F1EB\U0001F1EE', '\U000027A1', '\U0001F6AE'], ['\U0001F171', '\U0001F17E', '\U0001F1F7', '\U0001F1F0'] ]
+            for m in random.choice(mems):
+                await client.add_reaction(message, m)
+        else:
+            return
+    else:
         return
+
 async def parse_scm_query(itemq):
     prams = { 'currency' : 1, 'appid' : 440, 'market_hash_name': itemq }
     r = requests.get('https://steamcommunity.com/market/priceoverview/', params=prams)
